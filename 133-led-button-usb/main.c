@@ -3,6 +3,8 @@
 #include "hardware/regs/addressmap.h"
 #include "hardware/regs/sio.h"
 
+#include <stdio.h>
+
 const uint LED_PIN = 25;
 const uint BUTTON_PIN = 24;
 
@@ -15,6 +17,32 @@ bool get_button_debounce(uint pin)
     return state && gpio_get(pin);
 }
 
+void set_led(bool on)
+{
+    gpio_put(LED_PIN, on);
+    printf("led %s\n", on ? "on" : "off");
+}
+
+bool handle_command(int command, bool led)
+{
+    if (command == 'e')
+    {
+        led = true;
+        set_led(led);
+    }
+    else if (command == 'd')
+    {
+        led = false;
+        set_led(led);
+    }
+    else
+    {
+        printf("unknown command: %c\n", command);
+    }
+
+    return led;
+}
+
 int main()
 {
     gpio_init(BUTTON_PIN);
@@ -22,6 +50,8 @@ int main()
     gpio_set_dir(LED_PIN, GPIO_OUT);
     gpio_set_dir(BUTTON_PIN, GPIO_IN);
     gpio_pull_up(BUTTON_PIN);
+
+    stdio_init_all();
 
     bool led = false;
     bool previous = false;
@@ -32,9 +62,18 @@ int main()
 
         if (previous == true && current == false) {
             led = !led;
-            gpio_put(LED_PIN, led);
+            set_led(led);
         }
 
         previous = current;
+
+        int command = getchar_timeout_us(0);
+
+        if (command == PICO_ERROR_TIMEOUT)
+        {
+            continue;
+        }
+
+        led = handle_command(command, led);
     }
 }
